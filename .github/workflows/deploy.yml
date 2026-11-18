@@ -25,11 +25,7 @@ jobs:
 
           export PATH="/usr/local/bin:$PATH"
 
-          cat << 'ENVEOF' > .env
-PORT=3000
-NODE_ENV=production
-BASE_URL=https://batmanjpg.duckdns.org/aiostream
-ENVEOF
+          printf "PORT=3000\nNODE_ENV=production\nBASE_URL=https://batmanjpg.duckdns.org/aiostream\n" > .env
 
           echo "Installing packages with pnpm..."
           pnpm install --frozen-lockfile=false
