@@ -24,21 +24,32 @@ jobs:
           fi
 
           export PATH="/usr/local/bin:$PATH"
+          export NODE_OPTIONS="--max-old-space-size=2048"
 
-          printf "PORT=3000\nNODE_ENV=production\nBASE_URL=https://batmanjpg.duckdns.org/aiostream\n" > .env
-
-          echo "Installing packages with pnpm..."
-          pnpm install --frozen-lockfile=false
-
-          echo "Building packages..."
-          pnpm run build
+          # Configure environment if not present
+          if [ ! -f .env ] || ! grep -q "SECRET_KEY=" .env; then
+              SECRET_HEX=$(openssl rand -hex 32)
+              printf "PORT=3000\nNODE_ENV=production\nBASE_URL=https://batmanjpg.duckdns.org/aiostream\nSECRET_KEY=${SECRET_HEX}\nDATABASE_URI=sqlite://./data/db.sqlite\nLOG_LEVEL=info\n" > .env
+          else
+              sed -i 's|^BASE_URL=.*|BASE_URL=https://batmanjpg.duckdns.org/aiostream|' .env
+          fi
 
           echo "Generating metadata..."
           node scripts/generateMetadata.cjs
 
+          # Build packages if dist is missing
+          if [ ! -d "packages/core/dist" ] || [ ! -d "packages/frontend/dist" ] || [ ! -d "packages/server/dist" ]; then
+              echo "Installing packages with pnpm..."
+              pnpm install --frozen-lockfile=false
+              echo "Building packages..."
+              pnpm run build
+          else
+              echo "⚡ Pre-built packages detected in dist, proceeding with fast restart."
+          fi
+
           echo "Restarting aiostreams.service..."
           sudo systemctl restart aiostreams
-          sleep 8
+          sleep 6
 
           curl -s -I http://127.0.0.1:3000/api/v1/health | grep -q "200 OK"
           echo "✅ AIOStreams successfully deployed and online!"
