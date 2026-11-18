@@ -49,7 +49,16 @@ jobs:
 
           echo "Restarting aiostreams.service..."
           sudo systemctl restart aiostreams
-          sleep 6
 
-          curl -s -I http://127.0.0.1:3000/api/v1/health | grep -q "200 OK"
-          echo "✅ AIOStreams successfully deployed and online!"
+          echo "Waiting for service to be healthy..."
+          for i in {1..30}; do
+              if curl -s -I http://127.0.0.1:3000/api/v1/health | grep -q "200 OK"; then
+                  echo "✅ AIOStreams successfully deployed and online!"
+                  exit 0
+              fi
+              echo "Waiting for server to listen on port 3000 (attempt $i/30)..."
+              sleep 2
+          done
+
+          echo "❌ Health check timed out"
+          exit 1
