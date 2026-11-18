@@ -420,6 +420,11 @@ const routeTree = rootRoute.addChildren([
 
 export const router = createRouter({
   routeTree,
+  basepath:
+    typeof window !== 'undefined' &&
+    window.location.pathname.startsWith('/aiostream')
+      ? '/aiostream'
+      : undefined,
   context: { queryClient },
   trailingSlash: 'never',
   defaultPreload: 'intent',
