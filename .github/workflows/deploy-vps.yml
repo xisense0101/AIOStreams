@@ -7,56 +7,42 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [ self-hosted, Linux ]
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - name: Deploy AIOStreams Locally on VPS
+        run: |
+          set -e
+          echo "🚀 Deploying AIOStreams on VPS..."
+          mkdir -p /home/ubuntu/aiostreams
+          cd /home/ubuntu/aiostreams
 
-      - name: Deploy to VPS
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT }}
-          script: |
-            set -e
-            echo "🚀 Deploying AIOStreams on VPS..."
-            mkdir -p /home/ubuntu/aiostreams
-            cd /home/ubuntu/aiostreams
+          if [ ! -d ".git" ]; then
+              git clone https://github.com/xisense0101/AIOStreams.git .
+          else
+              git fetch origin main
+              git reset --hard origin/main
+          fi
 
-            if [ ! -d ".git" ]; then
-                git clone https://github.com/xisense0101/AIOStreams.git .
-            else
-                git fetch origin main
-                git reset --hard origin/main
-            fi
+          export PATH="/usr/local/bin:$PATH"
 
-            # Export Node 24 and pnpm paths
-            export PATH="/usr/local/bin:$PATH"
-
-            # Ensure environment configuration
-            cat << 'ENVEOF' > .env
+          cat << 'ENVEOF' > .env
 PORT=3000
 NODE_ENV=production
 BASE_URL=https://batmanjpg.duckdns.org/aiostream
 ENVEOF
 
-            # Install dependencies and build
-            echo "Installing packages with pnpm..."
-            pnpm install --frozen-lockfile=false
+          echo "Installing packages with pnpm..."
+          pnpm install --frozen-lockfile=false
 
-            echo "Building packages..."
-            pnpm run build
+          echo "Building packages..."
+          pnpm run build
 
-            echo "Generating metadata..."
-            node scripts/generateMetadata.cjs
+          echo "Generating metadata..."
+          node scripts/generateMetadata.cjs
 
-            # Restart service
-            echo "Restarting aiostreams.service..."
-            sudo systemctl restart aiostreams
-            sleep 8
+          echo "Restarting aiostreams.service..."
+          sudo systemctl restart aiostreams
+          sleep 8
 
-            # Healthcheck
-            curl -s -I http://127.0.0.1:3000/api/v1/health | grep -q "200 OK"
-            echo "✅ AIOStreams successfully deployed and online!"
+          curl -s -I http://127.0.0.1:3000/api/v1/health | grep -q "200 OK"
+          echo "✅ AIOStreams successfully deployed and online!"
